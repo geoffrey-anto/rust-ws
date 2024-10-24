@@ -173,3 +173,13 @@ impl Response {
         Ok(())
     }
 }
+
+pub fn handler(mut stream: TcpStream, callback: impl FnOnce(Request, Response) -> Response) {
+    let request = Request::new(&stream);
+
+    let response = Response::new();
+
+    let response = callback(request, response);
+
+    response.send(&mut stream).unwrap()
+}

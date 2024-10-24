@@ -1,8 +1,7 @@
-use rust_multithread_server::{Request, Response, ThreadPool};
-use std::{
-    fs,
-    net::{TcpListener, TcpStream},
-};
+use routes::Routes;
+use rust_multithread_server::{handler, ThreadPool};
+use std::net::TcpListener;
+mod routes;
 
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
@@ -12,37 +11,13 @@ fn main() {
         let stream = stream.unwrap();
 
         pool.execute(|| {
-            handle_connection(stream);
+            handler(stream, |req, res| match req.path.as_str() {
+                "/" => Routes::home_handler(req, res),
+                "/about" => Routes::about_handler(req, res),
+                _ => Routes::not_found_handler(req, res),
+            });
         });
     }
 
     println!("Shutting down.");
-}
-
-fn handle_connection(mut stream: TcpStream) {
-    let req = Request::new(&stream);
-    let mut res = Response::new();
-
-    match req.path.as_str() {
-        "/" => {
-            let contents = fs::read_to_string("src/views/index.html").unwrap();
-            res.set_status_code(200);
-            res.add_header("Content-Type".to_string(), "text/html".to_string());
-            res.set_body(contents.as_bytes().to_vec());
-        }
-        "/about" => {
-            let contents = fs::read_to_string("src/views/about.html").unwrap();
-            res.set_status_code(200);
-            res.add_header("Content-Type".to_string(), "text/html".to_string());
-            res.set_body(contents.as_bytes().to_vec());
-        }
-        _ => {
-            let contents = fs::read_to_string("src/views/404.html").unwrap();
-            res.set_status_code(404);
-            res.add_header("Content-Type".to_string(), "text/html".to_string());
-            res.set_body(contents.as_bytes().to_vec());
-        }
-    }
-
-    res.send(&mut stream).unwrap();
 }
